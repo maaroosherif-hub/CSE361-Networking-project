@@ -12,7 +12,7 @@ import socket
 from cddap.logger import PacketLogger
 from cddap.protocol import (
     DEFAULT_PORT, ERR_UNKNOWN_CLIENT, MsgType, ProtocolError,
-    build_error, build_hello_ack, now_us, parse_packet,
+    build_error, build_hello_ack, build_sync_resp, now_us, parse_packet,
 )
 
 RECV_BUF = 2048          # larger than any valid packet; anything bigger is rejected by the parser
@@ -40,7 +40,8 @@ class Server:
         self.log.log("SEND", msg_type, seq, client_id, addr, len(data), note)
 
     # ---------- receiving ----------
-    def handle_packet(self, data: bytes, addr):
+    def handle_packet(self, data: bytes, addr, t_recv: int):
+        """t_recv = now_us() taken immediately after recvfrom (t2 for SYNC_REQ)."""
         try:
             msg_type, msg = parse_packet(data)
         except ProtocolError as e:
@@ -52,6 +53,8 @@ class Server:
 
         if msg_type == MsgType.HELLO:
             self.on_hello(msg, addr)
+        elif msg_type == MsgType.SYNC_REQ:
+            self.on_sync_req(msg, addr, t_recv)
         else:
             # valid packet, but not one this step handles yet (or not one a server should receive)
             self.log.log("DROP", msg_type, msg.seq, getattr(msg, "client_id", 0), addr,
@@ -82,6 +85,34 @@ class Server:
         seq = self.next_seq()
         self.send(build_hello_ack(seq, now_us()), addr, MsgType.HELLO_ACK, cid, seq)
 
+    def on_sync_req(self, msg, addr, t2: int):
+        """Answer a clock-sync request.
+
+        The client computes  RTT    = (t4 - t1) - (t3 - t2)
+                             offset = ((t2 - t1) + (t3 - t4)) / 2
+        Time spent between t2 and t3 is subtracted out exactly, so logging or
+        other work in between does NOT hurt accuracy. What hurts is any gap
+        between the packet arriving and t2, or between t3 and the packet
+        leaving, because the formula cannot see those. Hence: t2 is taken
+        right after recvfrom (in run), and t3 right before sendto (below).
+        """
+        cid = msg.client_id
+        if self.clients.get(cid) != addr:
+            # only registered clients may sync: they must send HELLO first
+            seq = self.next_seq()
+            self.send(build_error(0, seq, now_us(), ERR_UNKNOWN_CLIENT), addr,
+                      MsgType.ERROR, cid, seq, "SYNC_REQ before HELLO")
+            return
+
+        t1 = msg.ts                      # client's send time, echoed back unchanged
+        seq = self.next_seq()
+        t3 = now_us()                    # as late as possible...
+        data = build_sync_resp(seq, t3, t1, t2, t3)
+        self.sock.sendto(data, addr)     # ...right before the packet leaves
+        # log AFTER sending so the CSV write never sits between t3 and sendto
+        self.log.log("SEND", MsgType.SYNC_RESP, seq, cid, addr, len(data),
+                     f"t1={t1} t2={t2} t3={t3}")
+
     # ---------- main loop ----------
     def run(self):
         try:
@@ -90,11 +121,12 @@ class Server:
                 if readable:
                     try:
                         data, addr = self.sock.recvfrom(RECV_BUF)
+                        t_recv = now_us()    # t2: stamped before ANY other work
                     except ConnectionResetError:
                         # Windows only: a previous sendto hit a closed client port.
                         # Harmless for UDP; ignore so one dead client can't kill the server.
                         continue
-                    self.handle_packet(data, addr)
+                    self.handle_packet(data, addr, t_recv)
                 # later steps: timers (warm-up, command schedule, confirm timeouts) go here
         except KeyboardInterrupt:
             print("\n[server] stopped by user")

@@ -1,0 +1,10 @@
+# Normalize line endings: Windows editors save CRLF, but bash scripts
+# fail in WSL/Linux with CRLF ("bad interpreter: /bin/bash^M").
+* text=auto
+*.sh text eol=lf
+*.py text eol=lf
+
+# Binary files: never touch
+*.pcap binary
+*.png binary
+*.pdf binary
