@@ -2,9 +2,9 @@ CDDAP - Coordinated Deadline-Driven Action Protocol
 CSE361 Computer Networks, Fall 2026 - Project 3 - Phase 1 submission
 
 Team:
-  Member A - [Name] ([ID]) - protocol & documents
-  Member B - [Name] ([ID]) - server & automation
-  Member C - [Name] ([ID]) - client & delivery
+  Member A - Hamzah Elleithy   (24p0379)  - GitHub: hamzahe06         - protocol & documents
+  Member B - Abdulrahman Baher (24p0263) - GitHub: Abdulrahman2194   - server & automation
+  Member C - Omar Sherif Abdelhalim (24p0255) - GitHub: maaroosherif-hub - client & delivery
 
 DEMO VIDEO (5 min): [PASTE LINK HERE - access: anyone with the link can view]
 
@@ -72,7 +72,8 @@ summary.csv columns:
   max_abs_error_ms    worst client distance from the deadline
   within_5ms          True if divergence <= 5 ms and no client missing
 
-A complete example run is included in results/.
+A complete example run (CSV logs, summary.csv, pcap) is included in
+results/baseline_seed42/.
 
 
 5. RUN BY HAND (one terminal each)
