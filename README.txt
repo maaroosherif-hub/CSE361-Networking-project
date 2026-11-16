@@ -6,7 +6,7 @@ Team:
   Member B - Abdulrahman Baher (24p0263) - GitHub: Abdulrahman2194   - server & automation
   Member C - Omar Sherif Abdelhalim (24p0255) - GitHub: maaroosherif-hub - client & delivery
 
-DEMO VIDEO (5 min): [PASTE LINK HERE - access: anyone with the link can view]
+DEMO VIDEO (5 min): https://drive.google.com/file/d/1vzWTWWimIrokijoPoINPeAAi1F8f8ce-/view?usp=drive_link
 
 
 1. WHAT THIS IS
